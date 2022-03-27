@@ -63,7 +63,7 @@ Feel free to specify them in the `.env` file.
 
 | Service    | Function | Image | Versions Available| Env Variabe | Host/Port      |
 |------------|----------|-------|--------------------|------------|----------------|
-| PostgreSQL | RDBMS    || [localhost:5432](localhost:5432) |
+| PostgreSQL | RDBMS    | [localhost:5432](localhost:5432) ||
 | Airflow    | Data Workload Scheduler & Orchestrator| [localhost:8080](localhost:8080)||||
 
 If at any point, you believe you messed up with versioning and need to roll-back, use the `docker-compose down --volumes --rmi all` command, then re-run your original commands.
@@ -72,6 +72,45 @@ We have support for the following:
 * **Cloud Providers:** AWS (Amazon), Azure (Microsoft), GCP (Google).
 * **Data Warehousing:** Redshift, Snowflake, BigQuery.
 * **Data Lakes:** Delta Lake, AWS S3 (`s3a://`), Google Cloud Storage (`gs://`), Azure Blob Storage (`wasbs://`), 
+
+AWS:
+* First, download and install [Git](https://git-scm.com/downloads), and clone the [Dunya project](https://github.com/AlainDaccache/Dunya.git)
+* Have an [AWS Account](https://aws.amazon.com/) ready, and install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+* Download [Docker Desktop](https://www.docker.com/products/docker-desktop/) with at least 4GB of RAM, and [Docker Compose](https://docs.docker.com/compose/install/) v1.27.0 or later.
+* Then, create an `.env` file at the root (`cd Dunya`) and fill in your credentials for the APIs, DBs, and other tools you'd like to use. If you leave empty, we won't set it up.
+
+```.env
+# Postgres DB Credentials
+POSTGRES_NAME=postgres
+POSTGRES_DB=airflow
+POSTGRES_USER=airflow
+POSTGRES_PASSWORD=airflow
+
+# Twitter API Credentials
+TWITTER_CONSUMER_KEY=<your_twitter_consumer_key>
+TWITTER_CONSUMER_SECRET=<your_twitter_consumer_secret>
+TWITTER_USER_KEY=<your_twitter_user_key>
+TWITTER_USER_SECRET=<your_twitter_user_secret>
+
+# Airflow Configurations
+AIRFLOW_IMAGE_NAME=dunya-airflow:2.2.4
+AIRFLOW_UID=50000
+```
+
+AWS:
+`cat ~/.aws/config`
+`cat ~/.aws/credentials`
+Go to your Bash i.e. `"C:\Program Files\Git\bin\sh.exe" --login`.
+* Then, run the Bash script `/bin/sh setup_infra.sh` to see the arguments you'll need to pass
+ 
+ If you see a `-bash: '\r': command not found` error, try `dos2unix <file_name>` in order to modify Windows newline characters (CR LF) so they are Unix / Cygwin compatible (LF).
+ 
+ 
+ Your bucket should contain:
+- The PySpark script
+- The input dataset
+- Your output results folder
+- Your log files folder
 
 ## Extracting Data
 
@@ -319,10 +358,10 @@ We also provide functionality for automating the machine learning workflows usin
 Support for powerful frameworks and libraries such as Tensorflow, Scikit-Learn, and Pytorch
 
 How to pick 
+
 # Dash | Data Vizualization
 
 # Environment Setup
-
 
 Make sure you've downloaded and installed Docker and docker-compose. We will now pull the required 
 images for our project, specifically Postgres, Redis, Zookeper, Kafka, Spark, Airflow
@@ -371,6 +410,35 @@ So, what now?
 3. Databricks creates a Docker container from the image.
 4. Databricks Runtime code is copied into the Docker container.
 5. The init scrips are executed. See Init script execution order.
+
+# Data Science
+There is a trend in ML Engineering branching out of Data Science. While Data Science is becoming more analysis-based, 
+its counterpart is becoming more product-based. 
+
+Data Science follows somewhat of the following lifecycle:
+
+Standardizing the process: Based on your use case, you'll need to make some decisions regarding the requirements
+* Gathering the data: Our data will therefore be loaded in the appropriate storage type (DB, WH) and data format.
+    - Building data pipelines to cover both ETL/ELT paradigms. 
+    - Cover both real-time/batch processing, as well as OLAP/OLTP. You decide if the data will need to be fed continuously.
+    - Supports different formats of data, from 
+        - unstructured (text, image, audio, video) which will cover the NLP and CV portions of AI.
+        - semi-structured (JSON, XML...) which could cover both NLP/CV and more ML cases
+        - structured
+    
+Pre-Processing: the data still might not be in the desired format:
+* Talk about Data Quality
+
+Exploratory Data Analysis: Talk about data profiling
+* Analysis Packages: NumPy, SciPy, Pandas, Statsmodels
+* Visualization Packages: matplotlib, seaborn
+
+You will typically be evaluating the features themselves, as well as the interactions between them:
+* For the feature itself; evaluate distribution with tools such as `pandas-profiling`
+* Running hypothesis tests; where you'll decide on the appropriate test to run based on the variable types (continuous, discrete), assumptions (normality), and groups
+* Evaluate other interactions between features; such as correlation, feature importance (typically `RandomForest`)
+* Selecting features; using the previous point, as well as doing some feature engineering to reduce dimensionality (PCA).
+
 
 # Requirements
 

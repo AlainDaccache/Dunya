@@ -26,7 +26,7 @@ FROM builder as apache-spark
 
 WORKDIR /opt/spark
 
-ENV SPARK_MASTER_PORT=${SPARK_MASTER_PORT:-7077} \
+ENV SPARK_MASTER_PORT=7077 \
 SPARK_MASTER_WEBUI_PORT=8080 \
 SPARK_LOG_DIR=/opt/spark/logs \
 SPARK_MASTER_LOG=/opt/spark/logs/spark-master.out \
@@ -46,4 +46,4 @@ ln -sf /dev/stdout $SPARK_WORKER_LOG
 
 COPY start-spark.sh /
 
-# CMD ["/bin/bash", "/start-spark.sh"]
+CMD ["/bin/bash", "/start-spark.sh"]

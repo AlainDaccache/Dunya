@@ -104,8 +104,8 @@ services:
     restart: always
 
   spark-master:
-    # image: docker.io/bitnami/spark:3.1.2
-    image: cluster-apache-spark:3.0.2
+    image: docker.io/bitnami/spark:3.1.2
+    # image: cluster-apache-spark:3.0.2
     user: root # Run container as root container: https://docs.bitnami.com/tutorials/work-with-non-root-containers/
     hostname: spark-master
     container_name: spark-master
@@ -113,10 +113,10 @@ services:
       - SPARK_MODE=master
       - SPARK_WORKLOAD=master
       - SPARK_LOCAL_IP=spark-master
-#      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-#      - SPARK_RPC_ENCRYPTION_ENABLED=no
-#      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-#      - SPARK_SSL_ENABLED=no
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
 #      - SPARK_EXECUTOR_CORES=4
 #      - SPARK_EXECUTOR_MEMORY=16GB
     ports:
@@ -127,8 +127,8 @@ services:
       - ./spark/resources:/usr/local/spark/resources # Resources folder (Must be the same path in airflow and Spark Cluster)
 
   spark-worker:
-    # image: docker.io/bitnami/spark:3.1.2
-    image: cluster-apache-spark:3.0.2
+    image: docker.io/bitnami/spark:3.1.2
+    # image: cluster-apache-spark:3.0.2
     user: root
     environment:
       - SPARK_MODE=worker
