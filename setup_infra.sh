@@ -37,11 +37,18 @@ echo "Download data"
 aws s3 cp s3://start-data-engg/data.zip ./
 unzip data.zip
 
+
+#--------------------------------------------------------------------------
+#                                   Airflow
+#--------------------------------------------------------------------------
 echo "Spinning up local Airflow infrastructure"
 rm -rf logs
 mkdir logs
 rm -rf temp
 mkdir temp
+
+# Airflow
+# Now built in docker-compose: docker build ./airflow --tag "$AIRFLOW_IMAGE_NAME"
 docker-compose up airflow-init
 docker-compose up -d
 echo "Sleeping 5 Minutes to let Airflow containers reach a healthy state"

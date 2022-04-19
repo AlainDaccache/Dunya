@@ -1,0 +1,205 @@
+version: '3.7'
+
+services:
+
+    redis:
+        image: redis:latest
+        expose:
+          - 6379
+        command: redis-server --requirepass redispass
+        healthcheck:
+          test: [ "CMD", "redis-cli", "ping" ]
+          interval: 5s
+          timeout: 30s
+          retries: 50
+        restart: always
+
+    postgres:
+        image: postgres:9.6
+        environment:
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        volumes:
+            - ./db/pg-init-scripts:/docker-entrypoint-initdb.d
+        healthcheck:
+            test: [ "CMD", "pg_isready", "-U", "airflow" ]
+            interval: 5s
+            retries: 5
+        ports:
+            - "5432:5432"
+
+    airflow-webserver:
+        image: "${AIRFLOW_IMAGE_NAME}"
+        build: ./airflow
+        restart: always
+        depends_on:
+            - postgres
+            - redis
+        environment:
+            - LOAD_EX=n
+            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - EXECUTOR=Celery
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+            - REDIS_PASSWORD=redispass
+            # AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+            # _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:- apache-airflow-providers-apache-spark}
+        volumes:
+            - ./dags:/usr/local/airflow/dags
+            - ./spark/app:/usr/local/spark/app #Spark Scripts (Must be the same path in airflow and Spark Cluster)
+            - ./spark/resources:/usr/local/spark/resources #Resources folder (Must be the same path in airflow and Spark Cluster)
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        ports:
+            - "8080:8080"
+        command: webserver
+        healthcheck:
+            test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+            interval: 30s
+            timeout: 30s
+            retries: 3
+
+    airflow-flower:
+        image: "${AIRFLOW_IMAGE_NAME}"
+        build: ./airflow
+        restart: always
+        depends_on:
+            - redis
+        environment:
+            - EXECUTOR=Celery
+            - REDIS_PASSWORD=redispass
+        ports:
+            - "5555:5555"
+        command: flower
+
+    airflow-scheduler:
+        image: "${AIRFLOW_IMAGE_NAME}"
+        build: ./airflow
+        restart: always
+        depends_on:
+            - airflow-webserver
+        volumes:
+            - ./dags:/usr/local/airflow/dags
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        environment:
+            - LOAD_EX=n
+            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - EXECUTOR=Celery
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+            - REDIS_PASSWORD=redispass
+        command: scheduler
+
+    airflow-worker:
+        image: "${AIRFLOW_IMAGE_NAME}"
+        build: ./airflow
+        restart: always
+        depends_on:
+            - airflow-scheduler
+        volumes:
+            - ./dags:/usr/local/airflow/dags
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        environment:
+            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - EXECUTOR=Celery
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+            - REDIS_PASSWORD=redispass
+        command: worker
+
+    spark-master:
+        image: docker.io/bitnami/spark:3.1.2
+        user: root # Run container as root container: https://docs.bitnami.com/tutorials/work-with-non-root-containers/
+        hostname: spark-master
+        container_name: spark-master
+        environment:
+          - SPARK_MODE=master
+          - SPARK_WORKLOAD=master
+          - SPARK_LOCAL_IP=spark-master
+          - SPARK_RPC_AUTHENTICATION_ENABLED=no
+          - SPARK_RPC_ENCRYPTION_ENABLED=no
+          - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+          - SPARK_SSL_ENABLED=no
+    #      - SPARK_EXECUTOR_CORES=4
+    #      - SPARK_EXECUTOR_MEMORY=16GB
+        ports:
+          - '8181:8080'
+          - '7077:7077'
+        volumes:
+          - ./spark/app:/usr/local/spark/app # Spark scripts folder (Must be the same path in airflow and Spark Cluster)
+          - ./spark/resources:/usr/local/spark/resources # Resources folder (Must be the same path in airflow and Spark Cluster)
+
+    spark-worker:
+        image: docker.io/bitnami/spark:3.1.2
+        user: root
+        environment:
+          - SPARK_MODE=worker
+          - SPARK_MASTER_URL=spark://spark-master:7077
+    #      - SPARK_WORKER_MEMORY=4G
+    #      - SPARK_WORKER_CORES=6
+          - SPARK_RPC_AUTHENTICATION_ENABLED=no
+          - SPARK_RPC_ENCRYPTION_ENABLED=no
+          - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+          - SPARK_SSL_ENABLED=no
+        volumes:
+          - ./spark/app:/usr/local/spark/app # Spark scripts folder (Must be the same path in airflow and Spark Cluster)
+          - ./spark/resources:/usr/local/spark/resources # Resources folder (Must be the same path in airflow and Spark Cluster)
+        depends_on:
+          - spark-master
+
+    jupyter:
+        image: jupyter/pyspark-notebook:spark-3.1.2
+        ports:
+          - "8888:8888"
+          - "4040-4080:4040-4080"
+        volumes:
+          - ./jupyter-lab:/home/jovyan/work/notebooks/
+          - ./spark/resources/data:/home/jovyan/work/data/
+          - ./spark/resources/jars:/home/jovyan/work/jars/
+
+#  web:
+#    build: .
+#    command: python manage.py runserver 0.0.0.0:8000
+#    volumes:
+#      - .:/code
+#    ports:
+#      - "8000:8000"
+#    env_file:
+#      - .env
+#    depends_on:
+#      - postgres
+#
+#  zookeeper:
+#    image: wurstmeister/zookeeper
+#    # container_name: zookeeper
+#    ports:
+#      - "2181:2181"
+#
+#  kafka:
+#    image: wurstmeister/kafka
+#    # container_name: kafka
+#    ports:
+#      - "9092:9092"
+#    expose:
+#      - "9093"
+#    environment:
+#      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://localhost:9092
+#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+#      KAFKA_LISTENERS: INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
+#      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#      KAFKA_CREATE_TOPICS: 'test_topic_1'
+#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    depends_on:
+#      - zookeeper
+
+#volumes:
+#  postgres-db-volume:
